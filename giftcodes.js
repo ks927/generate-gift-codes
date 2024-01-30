@@ -1,59 +1,73 @@
-var fs = require('fs');
-var count = 1,
-tryAgain = 0;
-str = '',
-arr = [],
-// batchCount / codeCount = # of codes per batch
-codeCount = 2000,
-batchCount = 40;
+const fs = require('fs');
 
-// current date
-var today = new Date();
-var dd = String(today.getDate()).padStart(2, '0');
-var mm = String(today.getMonth() + 1).padStart(2, '0'); //January is 0!
-var yyyy = today.getFullYear();
-today = `${mm}-${dd}-${yyyy}`
+// add error handling
+// add the zip step
+const generate = {
+    todayFormatted: '',
+    fileCount: 1,
+    arr: [],
 
-fs.mkdirSync(today, 0o776);
+    init: () => {
+        generate.createDirectory();
+        generate.createCodes();
+    },
 
-function uniqueCode() {
-    var code = 'Y' + Math.floor(Math.random() * 1000000000) + '\n';
-    
-    if (!arr.includes(code)) {
-        arr.push(code);
-        return code;
-    } else {
-        tryAgain++;
-        uniqueCode();
-    }
-}
-// generates 40 batches of 50
-for (i=1; i<=2000; i++) {
-    code = uniqueCode();
-    str += code
-    if (i % 50 === 0) {
-        if (i === 2000) {
-            console.log('tryagain count', tryAgain)
+    createDirectory: () => {
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0'); // January is 0!
+        const yyyy = today.getFullYear();
+        generate.todayFormatted = `${mm}-${dd}-${yyyy}`;
+
+        fs.mkdirSync(generate.todayFormatted, 0o776);
+    },
+
+    createCodes: () => {
+        const numberOfBatches = process.argv[2];
+        const codesPerBatch = process.argv[3];
+        const totalCodes = numberOfBatches * codesPerBatch;
+        const tryAgain = 0;
+        let codeHolder = '';
+
+        // generates numberOfBatches of codesPerBatch
+        for (i = 1; i <= totalCodes; i++) {
+            let code = generate.uniqueCode();
+            codeHolder += code;
+
+            if (i % codesPerBatch === 0) {
+                if (i === totalCodes) {
+                    console.log('tryagain count', tryAgain);
+                }
+                generate.writeToFile(codeHolder);
+                generate.fileCount++;
+                codeHolder = ''
+            }
         }
-        fs.writeFile(`./${today}/file_${count}.txt`, str, function (err) {
+    },
+
+    uniqueCode: () => {
+        const prefix = process.argv[4] ?? 'H';
+        const code = prefix + Math.floor(Math.random() * 1000000000) + '\n';
+        
+        // check for duplicates
+        if (!generate.arr?.includes(code)) {
+            generate.arr.push(code);
+            return code;
+        } else {
+            tryAgain++;
+            uniqueCode();
+        }
+    },
+
+    writeToFile: (code) => {
+        fs.writeFile(`./${generate.todayFormatted}/batch_${generate.fileCount}.txt`, code, function (err) {
             if (err) throw err;
         });
-        count++;
-        str = ''
-    }
+    },
+
 }
-// generates 3 batches of 200
-// for (i=1; i<=300; i++) {
-//     code = uniqueCode();
-//     str += code
-//     if (i % 100 === 0) {
-//         if (i === 300) {
-//             console.log('tryagain count', tryAgain)
-//         }
-//         fs.writeFile(`./${today}/file_${count}.txt`, str, function (err) {
-//             if (err) throw err;
-//         });
-//         count++;
-//         str = ''
-//     }
-// }
+
+generate.init();
+
+
+
